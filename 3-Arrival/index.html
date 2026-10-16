@@ -1,19 +1,99 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Sketch</title>
+    <title>3 - Arrival : Serpent Réactif & Nourriture Autonome (Reynolds)</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
+    <!-- Bibliothèques p5.js et multimédia sonore -->
     <script src="libraries/p5.min.js"></script>
     <script src="libraries/p5.sound.min.js"></script>
+
+    <!-- Code fourni inviolable -->
     <script src="vehicle.js"></script>
+
+    <!-- Entités sous-classes de Vehicle et modules multimédia -->
+    <script src="soundEffects.js"></script>
+    <script src="snakeSegment.js"></script>
+    <script src="snakeHead.js"></script>
+    <script src="snake.js"></script>
+    <script src="food.js"></script>
+
+    <!-- Script principal d'orchestration -->
     <script src="sketch.js"></script>
   </head>
   <body>
-    <!-- Pas besoin de déclarer un canvas pour dessiner en P5.js -->
+    <!-- Barre de contrôle réactive et personnalisable -->
+    <header id="controls">
+      <div class="control-group">
+        <label for="scenario-select">Scénario :</label>
+        <select id="scenario-select">
+          <option value="mouse" selected>1. Suivi de la souris (Arrivée Reynolds)</option>
+          <option value="hunt">2. Chasse automatique (Poursuite intelligente)</option>
+          <option value="wander">3. Errance libre (Wander & Évitement)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="snake-speed">Vitesse serpent :</label>
+        <input id="snake-speed" type="range" min="2" max="12" step="0.5" value="5">
+        <output id="snake-speed-val" for="snake-speed">5 px/f</output>
+      </div>
+
+      <div class="control-group">
+        <label for="snake-size">Taille serpent :</label>
+        <input id="snake-size" type="range" min="10" max="32" step="1" value="16">
+        <output id="snake-size-val" for="snake-size">16 px</output>
+      </div>
+
+      <div class="control-group">
+        <label for="food-speed">Vitesse nourriture :</label>
+        <input id="food-speed" type="range" min="0.5" max="8" step="0.5" value="2.5">
+        <output id="food-speed-val" for="food-speed">2.5 px/f</output>
+      </div>
+
+      <div class="control-group">
+        <label for="food-count">Nombre nourriture :</label>
+        <input id="food-count" type="range" min="1" max="25" step="1" value="8">
+        <output id="food-count-val" for="food-count">8</output>
+      </div>
+
+      <div class="control-group">
+        <label for="braking-radius">Rayon freinage :</label>
+        <input id="braking-radius" type="range" min="40" max="300" step="10" value="120">
+        <output id="braking-radius-val" for="braking-radius">120 px</output>
+      </div>
+
+      <div class="control-group">
+        <label for="growth-rate">Croissance / repas :</label>
+        <input id="growth-rate" type="range" min="1" max="8" step="1" value="3">
+        <output id="growth-rate-val" for="growth-rate">+3 anneaux</output>
+      </div>
+
+      <div class="control-group toggles">
+        <label class="checkbox-label" for="food-evasion" title="La nourriture fuit le serpent quand il s'approche">
+          <input id="food-evasion" type="checkbox" checked> ⚡ Fuite aliments
+        </label>
+
+        <label class="checkbox-label" for="toggle-debug" title="Visualiser cercles de freinage, wander et vitesses (Touche 'D')">
+          <input id="toggle-debug" type="checkbox"> 🔍 Debug [D]
+        </label>
+
+        <label class="checkbox-label" for="sound-toggle" title="Activer / Désactiver les effets sonores Web Audio">
+          <input id="sound-toggle" type="checkbox" checked> 🔊 Son
+        </label>
+      </div>
+
+      <div class="control-group actions">
+        <button id="btn-reset" type="button" class="ctrl-btn" title="Réinitialiser la simulation (Touche 'R')">🔄 Réinitialiser</button>
+        <span id="badge-score" class="badge score-badge">Score : 0</span>
+        <span id="badge-length" class="badge len-badge">Longueur : 12 anneaux</span>
+      </div>
+    </header>
+
+    <!-- Conteneur d'affichage de la scène p5.js -->
+    <main id="scene-container"></main>
   </body>
 </html>

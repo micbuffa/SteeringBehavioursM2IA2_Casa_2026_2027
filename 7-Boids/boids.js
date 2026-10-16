@@ -3,21 +3,18 @@
 // https://thecodingtrain.com/CodingChallenges/124-flocking-boids.html
 // https://youtu.be/mhjuuHl6qHM
 
-class Boid {
+class Boid extends Vehicle {
   static debug = false;
   constructor(x, y, image) {
-
-    this.pos = createVector(x, y);
-
+    super(x, y);
     this.vel = p5.Vector.random2D();
     this.vel.setMag(random(2, 4));
-    this.acc = createVector();
     this.maxForce = 0.2;
     this.maxSpeed = 5;
     this.r = 6;
 
     // si le boid est une image
-    if (image !== undefined) {
+    if (image && image.width > 0 && image.height > 0) {
       this.image = image;
 
       // largeur image
@@ -43,7 +40,7 @@ class Boid {
     // Pour le confinement
     this.boundariesWeight = 10;
     // pour le avoid
-    this.avoidWeight = 15;
+    this.avoidWeight = 3;
 
     // Paramètres comportement confinement
     this.boundariesX = 0;
@@ -465,17 +462,6 @@ class Boid {
   }
 
 
-  applyForce(force) {
-    this.acc.add(force);
-  }
-
-  update() {
-    this.pos.add(this.vel);
-    this.vel.add(this.acc);
-    this.vel.limit(this.maxSpeed);
-    this.acc.mult(0);
-  }
-
   show() {
     if (this.image !== undefined) {
       imageMode(CENTER);
@@ -524,6 +510,89 @@ class Boid {
     rotate(v.heading());
     translate(-arrowSize / 2, 0);
     triangle(0, arrowSize / 2, 0, -arrowSize / 2, arrowSize, 0);
+    pop();
+  }
+
+  // Combine le flocking habituel avec une force de sécurité prioritaire.
+  flock(boids, obstacles = [], target = null) {
+    const alignment = this.align(boids).mult(this.alignWeight);
+    const cohesion = this.cohesion(boids).mult(this.cohesionWeight);
+    const separation = this.separation(boids).mult(this.separationWeight);
+    const boundaries = this.boundaries(this.boundariesX, this.boundariesY,
+      this.boundariesWidth, this.boundariesHeight, this.boundariesDistance).mult(this.boundariesWeight);
+    const social = alignment.add(cohesion).add(separation).add(boundaries);
+    const safety = this.avoid(obstacles, target).mult(this.avoidWeight);
+    if (safety.magSq() > 0) social.mult(0.3);
+    this.applyForce(social.add(safety).limit(this.maxForce * 4));
+  }
+
+  // Une même règle de répulsion traite la cible souris et les obstacles.
+  avoid(obstacles = [], target = null) {
+    const force = createVector(0, 0);
+    if (target) force.add(this.fleeCircle(target.pos, target.radius || target.r || 0, target.margin || 12));
+    for (const obstacle of obstacles) {
+      force.add(this.fleeCircle(obstacle.pos, obstacle.radius || obstacle.r || 0, obstacle.margin || 12));
+    }
+    return force.limit(this.maxForce * 2);
+  }
+
+  fleeCircle(center, radius, margin = 12) {
+    const away = p5.Vector.sub(this.pos, center);
+    const distance = away.mag();
+    const safeDistance = radius + this.r / 2 + margin;
+    if (distance >= safeDistance) return createVector(0, 0);
+    // Si les centres coïncident, donne une direction déterministe à l'évitement.
+    if (distance < 0.001) away.set(1, 0);
+    away.normalize();
+    const desired = away.mult(this.maxSpeed);
+    const urgency = constrain((safeDistance - distance) / safeDistance, 0, 1);
+    return desired.sub(this.vel).limit(this.maxForce).mult(urgency * urgency);
+  }
+
+  fleeWithTargetRadius(target) {
+    if (!target || !target.pos) return;
+    this.applyForce(this.fleeCircle(target.pos, target.radius || target.r || 0, target.margin || 12).mult(2));
+  }
+
+  show() {
+    push();
+    translate(this.pos.x, this.pos.y);
+    rotate(this.vel.heading());
+    if (this.image && this.image.width > 0 && this.image.height > 0) {
+      imageMode(CENTER);
+      image(this.image, 0, 0, this.r * 1.8, this.r * 1.3);
+    } else {
+      // Tigre stylisé orienté vers la droite; aucune image externe n'est requise.
+      const s = this.r / 18;
+      noStroke();
+      fill('#f28c28');
+      ellipse(-2 * s, 0, 28 * s, 17 * s); // corps
+      ellipse(10 * s, -1 * s, 14 * s, 13 * s); // tête
+      triangle(5 * s, -7 * s, 6 * s, -13 * s, 11 * s, -8 * s); // oreilles
+      triangle(12 * s, -7 * s, 16 * s, -11 * s, 16 * s, -4 * s);
+      fill('#fff1d6');
+      ellipse(15 * s, 2 * s, 7 * s, 5 * s); // museau
+      fill('#171717');
+      ellipse(17 * s, 1 * s, 2 * s, 2 * s);
+      ellipse(12 * s, -3 * s, 2 * s, 2 * s); // œil
+      // Rayures noires sur le dos et les flancs.
+      stroke('#21170f');
+      strokeWeight(Math.max(1, 2 * s));
+      line(-10 * s, -7 * s, -7 * s, -2 * s);
+      line(-3 * s, -8 * s, -1 * s, -2 * s);
+      line(4 * s, -7 * s, 2 * s, -2 * s);
+      line(-10 * s, 7 * s, -7 * s, 2 * s);
+      line(-3 * s, 8 * s, -1 * s, 2 * s);
+      // Queue segmentée et pattes pour une silhouette de tigre plus lisible.
+      stroke('#f28c28');
+      strokeWeight(3 * s);
+      line(-15 * s, 0, -21 * s, -3 * s);
+      stroke('#21170f');
+      line(-21 * s, -3 * s, -24 * s, -5 * s);
+      stroke('#f28c28');
+      line(-10 * s, 7 * s, -10 * s, 10 * s);
+      line(4 * s, 7 * s, 4 * s, 10 * s);
+    }
     pop();
   }
   

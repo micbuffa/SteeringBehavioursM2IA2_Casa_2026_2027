@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+    <title>Path Following Complex — voitures sport</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
@@ -12,30 +12,42 @@
     <script src="libraries/p5.sound.min.js"></script>
     <script src="path.js"></script>
     <script src="vehicle.js"></script>
-    <script src="snakeSegment.js"></script>
-    <script src="snake.js"></script>
-    <script src="snakePathFollowing.js"></script>
+    <script src="SportCar.js"></script>
+    <script src="Obstacle.js"></script>
+    <script src="raceAudio.js"></script>
     <script src="sketch.js"></script>
   </head>
   <body>
-    <header id="controls">
-      <label for="snake-follow">Poids follow du serpent</label>
-      <input id="snake-follow" type="range" min="0" max="5" step="0.1" value="2">
-      <output id="snake-follow-value" for="snake-follow">2.0</output>
-      <label for="snake-separation">Poids séparation du serpent</label>
-      <input id="snake-separation" type="range" min="0" max="5" step="0.1" value="1.2">
-      <output id="snake-separation-value" for="snake-separation">1.2</output>
-      <label for="circuit-width">Largeur du circuit</label>
-      <input id="circuit-width" type="range" min="10" max="100" step="1" value="20">
-      <output id="circuit-width-value" for="circuit-width">20 px</output>
-      <label for="snake-spacing">Distance entre anneaux</label>
-      <input id="snake-spacing" type="range" min="5" max="80" step="1" value="20">
-      <output id="snake-spacing-value" for="snake-spacing">20 px</output>
-      <label for="snake-size">Taille des serpents</label>
-      <input id="snake-size" type="range" min="8" max="60" step="1" value="22">
-      <output id="snake-size-value" for="snake-size">22 px</output>
-      <span>T : ajouter un serpent au pointeur · D : debug · Glisser dans le canvas : ajouter des véhicules</span>
-      <output id="snake-count" aria-live="polite">1 serpent</output>
+    <header class="controls">
+      <strong>🏁 Circuit sport</strong>
+      <label>Suivi du chemin <input id="follow-weight" type="range" min="0" max="5" step="0.1" value="2"><output id="follow-value">2.0</output></label>
+      <label>Séparation <input id="separate-weight" type="range" min="0" max="5" step="0.1" value="1.2"><output id="separate-value">1.2</output></label>
+      <button id="add-car" type="button">Ajouter une voiture (')</button>
+      <label><input id="toggle-debug" type="checkbox"> Debug (D)</label>
+      <span id="car-count">1 voiture</span>
+      <section class="advanced-controls" aria-label="Réglages de course">
+        <label>Configurer
+          <select id="car-select"><option value="">Voiture 1</option></select>
+        </label>
+        <label>Vitesse <input id="car-speed" type="range" min="1.5" max="8" step="0.1" value="4.5"><output id="car-speed-value">4.5 px/f</output></label>
+        <label>Accélération <input id="car-acceleration" type="range" min="0.08" max="0.8" step="0.02" value="0.3"><output id="car-acceleration-value">0.30</output></label>
+        <label>Précision <input id="car-precision" type="range" min="0.5" max="2.5" step="0.1" value="1.6"><output id="car-precision-value">1.6×</output></label>
+        <label>Détection <input id="car-detection" type="range" min="60" max="300" step="10" value="150"><output id="car-detection-value">150 px</output></label>
+        <label>Conduite
+          <select id="driving-style"><option value="prudent">Prudente</option><option value="normal" selected>Normale</option><option value="agressif">Agressive</option></select>
+        </label>
+        <label>Difficulté piste
+          <select id="circuit-difficulty"><option value="facile">Facile</option><option value="normal" selected>Normale</option><option value="difficile">Difficile</option></select>
+        </label>
+        <button id="obstacle-mode" type="button">Ajouter un obstacle</button>
+        <button id="clear-obstacles" type="button" class="secondary">Effacer obstacles</button>
+        <label class="sound-control"><input id="sound-enabled" type="checkbox"> Son moteur</label>
+        <label>Volume <input id="sound-volume" type="range" min="0" max="1" step="0.05" value="0.35"><output id="sound-volume-value">35%</output></label>
+        <button id="pause-button" type="button" class="secondary">Pause</button>
+        <button id="reset-button" type="button" class="secondary">Réinitialiser</button>
+        <small>Touches : ' voiture · O obstacle · P pause · D debug</small>
+      </section>
     </header>
+    <main id="scene"></main>
   </body>
 </html>

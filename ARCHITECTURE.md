@@ -14,11 +14,13 @@ Pour étendre un exemple, créer une sous-classe distincte de `Vehicle` pour cha
 
 ### Classes d'entité
 
-Créer un fichier séparé par type d'entité, dans le dossier de l'exemple concerné : par exemple `Player.js`, `Enemy.js` et `Target.js`. Ne pas regrouper plusieurs types d'entités dans un fichier. Toute entité visible, même si elle paraît statique, étend `Vehicle`; ne pas créer de classe d'objet visible indépendante de `Vehicle`.
+Créer un fichier séparé par type d'entité, dans le dossier de l'exemple concerné : par exemple `Player.js`, `Enemy.js`, `Target.js`, `targetFuyante.js` et `Obstacle.js`. Ne pas regrouper plusieurs types d'entités dans un fichier. **Toute entité visible étend obligatoirement `Vehicle`** (y compris proies, cibles statiques, mobiles ou fuyantes) et se déplace exclusivement via les steering behaviors.
 
-### Comportements et composition
+### Comportements, composition et multi-scénarios
 
 Garder chaque comportement indépendant, réutilisable et testable. Les entités ou le code de l'exemple combinent les forces avec une somme pondérée ou une règle de priorité. Distinguer l'objectif choisi, le calcul des forces de steering et l'application des forces par la locomotion.
+
+Lorsqu'un exemple intègre plusieurs variantes de comportement (ex. poursuite standard vs cible fuyante avec seuil de détection et endurance), un sélecteur de scénario (`<select>`) permet de basculer dynamiquement d'une configuration à l'autre. Un mode debug commutable (touche 'd') permet de visualiser les volumes de perception et cercles d'action sans altérer la physique.
 
 ## Tests
 

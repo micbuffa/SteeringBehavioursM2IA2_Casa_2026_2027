@@ -1,96 +1,230 @@
 let pursuer;
 let targets = [];
-let sliderVitesseMaxCible;
+let flares = [];
+const NB_TARGETS = 4;
+let isSimulationPaused = false;
+let globalFlaresEnabled = true;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  // Poursuiveur
-  pursuer = new Vehicle(random(width), random(height));
-  pursuer.maxSpeed = 10;
-  pursuer.maxForce = 0.4;
-  pursuer.vel = createVector(2, 4)
+  // 1. Initialisation du vaisseau poursuiveur (hérite de Vehicle)
+  pursuer = new Pursuer(width / 2, height / 2);
+  pursuer.maxSpeed = 9;
+  pursuer.maxForce = 0.35;
+  pursuer.vel = createVector(2, 3);
 
-  // Cible
-  target = new Target(random(width), random(height));
-  target.maxSpeed = 3;
-  target.maxForce = 1;
-
-  // Si on veut plus tard plusieurs cibles
-  let nbTargets = 10;
-  for (let i = 0; i < nbTargets; i++) {
-    let t = new BouncingBall(random(width), random(height));
-    t.maxSpeed = 10;
-    t.maxForce = 0.5;
-    targets.push(t);
-  }
-
+  // 2. Initialisation exacte de 4 cibles au même temps (héritent de Vehicle)
+  spawnTargets(NB_TARGETS);
 }
 
-let oldMousePos;
+function spawnTargets(count) {
+  targets = [];
+  for (let i = 0; i < count; i++) {
+    const margin = 80;
+    const x = random(margin, width - margin);
+    const y = random(margin, height - margin);
+    const t = new Target(x, y, i + 1);
+    t.flaresEnabled = globalFlaresEnabled;
+    targets.push(t);
+  }
+}
+
+function respawnTarget(target) {
+  // Réapparition à distance sécurisée du poursuiveur
+  let newX, newY, d;
+  let attempts = 0;
+  do {
+    newX = random(80, width - 80);
+    newY = random(80, height - 80);
+    d = dist(newX, newY, pursuer.pos.x, pursuer.pos.y);
+    attempts++;
+  } while (d < 250 && attempts < 20);
+
+  target.pos.set(newX, newY);
+  target.vel = p5.Vector.random2D().mult(random(3, 5));
+  target.isAlerted = false;
+}
 
 function draw() {
-  background(0);
+  background(10, 14, 23);
 
-  // pursuer = le véhicule poursuiveur, il vise un point devant la cible
-  target = cibleLaPlusProche(pursuer, targets);
+  // Fond de grille radar tactique
+  drawTacticalGrid();
 
+<<<<<<< HEAD
+  if (!isSimulationPaused) {
+    // 3. Le vaisseau poursuit TOUJOURS la cible la plus proche
+    const closestTarget = pursuer.findClosestTarget(targets);
+    pursuer.currentTarget = closestTarget;
+=======
   let force = pursuer.pursuePerfect(target);
   //let force = pursuer.pursue(target);
   pursuer.applyForce(force);
+>>>>>>> upstream/main
 
-  // déplacement et dessin du véhicule et de la target
-  pursuer.update();
-  pursuer.edges();
+    if (closestTarget) {
+      const pursueForce = pursuer.calculatePursuitForce(closestTarget);
+      pursuer.applyForce(pursueForce);
+    }
+
+    pursuer.update();
+    pursuer.edges();
+
+    // 4. Mise à jour des 4 cibles
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      target.flaresEnabled = globalFlaresEnabled;
+
+      const d = p5.Vector.dist(pursuer.pos, target.pos);
+
+      // Détection du poursuiveur
+      if (target.detects(pursuer)) {
+        target.isAlerted = true;
+
+        // Comportement d'évasion (accélération et fuite)
+        target.maxSpeed = 11;
+        target.maxForce = 0.7;
+        const evadeForce = target.evade(pursuer);
+        target.applyForce(evadeForce);
+
+        // Option de largage de leurres (flares) derrière la cible
+        target.launchFlare(flares);
+      } else {
+        target.isAlerted = false;
+        target.maxSpeed = 6;
+        target.maxForce = 0.3;
+      }
+
+      // Détection d'interception / contact
+      if (d < pursuer.r + target.r) {
+        // La cible est touchée : réapparition immédiate pour maintenir 4 cibles
+        respawnTarget(target);
+      }
+
+      target.update();
+    }
+
+    // 5. Mise à jour et nettoyage des leurres (détruits après 1s)
+    const currentTime = millis();
+    for (let i = flares.length - 1; i >= 0; i--) {
+      const flare = flares[i];
+      flare.update();
+      if (flare.isDead(currentTime)) {
+        flares.splice(i, 1); // Destruction automatique après 1s
+      }
+    }
+  }
+
+  // --- RENDU GRAPHIQUE ---
+
+  // Rendu des leurres
+  for (let i = 0; i < flares.length; i++) {
+    flares[i].show();
+  }
+
+  // Rendu des cibles
+  for (let i = 0; i < targets.length; i++) {
+    targets[i].show();
+  }
+
+  // Rendu du poursuiveur (avec trajectoire haute précision et traînée)
   pursuer.show();
 
-  // on déplace et on dessine toutes les targets
-  targets.forEach(target => {
-    // lorsque la target atteint un bord du canvas elle ré-apparait de l'autre côté
-    target.edges();
-
-    // TODO : si le poursuiveur est à moins de target.rayonDetection
-    // alors la target s'évade (evade = fuite avec prédiction) du
-    // poursuiveur
-    let d = p5.Vector.dist(pursuer.pos, target.pos);
-    if (d < target.rayonDetection) {
-      // La cible fuit en accélérant
-      target.maxSpeed = 20;
-      target.maxForce = 1;
-      let force = target.evade(pursuer);
-      target.applyForce(force);
-
-      if (d < 30) {
-        console.log("Cible touchée !");
-        // on tue la cible, on la supprime du tableau
-        let index = targets.indexOf(target);
-        if (index > -1)
-          targets.splice(index, 1);
-      }
-    } else {
-      // La cible se déplace normalement
-      target.maxSpeed = 10;
-      target.maxForce = 0.5;
-    }
-
-    // mettre en commentaire la ligne suivante
-    // si cible controlée à la souris
-    target.update();
-    target.show();
-  });
+  // Affichage du HUD d'informations tactiques
+  drawTacticalHUD();
 }
 
-function cibleLaPlusProche(vehicle, targets) {
-  let cibleProche = null;
-  let distanceMin = Infinity;
+function drawTacticalGrid() {
+  push();
+  stroke(25, 40, 60, 60);
+  strokeWeight(1);
+  const gridSize = 60;
+  for (let x = 0; x < width; x += gridSize) {
+    line(x, 0, x, height);
+  }
+  for (let y = 0; y < height; y += gridSize) {
+    line(0, y, width, y);
+  }
+  pop();
+}
 
-  targets.forEach(target => {
-    let d = p5.Vector.dist(vehicle.pos, target.pos);
-    if (d < distanceMin) {
-      distanceMin = d;
-      cibleProche = target;
-    }
-  });
+function drawTacticalHUD() {
+  push();
+  fill(15, 23, 42, 220);
+  stroke(0, 255, 200, 100);
+  strokeWeight(1);
+  rect(16, 16, 320, 210, 8);
 
-  return cibleProche;
+  noStroke();
+  fill(0, 255, 200);
+  textSize(13);
+  textStyle(BOLD);
+  textAlign(LEFT, TOP);
+  text("RADAR TACTIQUE — PURSUE & EVADE", 28, 26);
+
+  textStyle(NORMAL);
+  textSize(11);
+  fill(180, 210, 230);
+
+  // Statut des cibles
+  text(`Cibles simultanées : ${targets.length} / ${NB_TARGETS}`, 28, 48);
+
+  const closest = pursuer.currentTarget;
+  if (closest) {
+    const distToClosest = Math.round(p5.Vector.dist(pursuer.pos, closest.pos));
+    fill(0, 255, 150);
+    text(`Cible la plus proche : Cible #${closest.id} (${distToClosest} px)`, 28, 66);
+  } else {
+    fill(180, 180, 180);
+    text("Cible la plus proche : Aucune", 28, 66);
+  }
+
+  // Statut de la trajectoire
+  fill(180, 210, 230);
+  text("Trajectoire : Prédiction continue Euler (55 pas)", 28, 86);
+
+  // Statut des leurres
+  fill(255, 170, 50);
+  text(`Leurres actifs (vie 1.0s) : ${flares.length}`, 28, 106);
+
+  const flareStatusColor = globalFlaresEnabled ? color(0, 255, 150) : color(255, 80, 80);
+  fill(flareStatusColor);
+  text(`Option leurres [F] : ${globalFlaresEnabled ? "ACTIVÉE" : "DÉSACTIVÉE"}`, 28, 126);
+
+  // Liste des distances des 4 cibles
+  fill(150, 180, 200);
+  textSize(10);
+  text("Distances des 4 cibles :", 28, 148);
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i];
+    const d = Math.round(p5.Vector.dist(pursuer.pos, t.pos));
+    const isTargeted = closest && closest.id === t.id;
+    fill(isTargeted ? color(0, 255, 200) : color(140, 160, 180));
+    text(`#${t.id}: ${d}px ${isTargeted ? "◄ VERROUILLÉE" : ""}`, 28 + (i % 2) * 140, 166 + Math.floor(i / 2) * 16);
+  }
+
+  // Raccourcis clavier
+  fill(100, 140, 160);
+  text("[F] Activer/Désactiver leurres  |  [R] Réinitialiser", 28, 202);
+
+  pop();
+}
+
+function keyPressed() {
+  if (key === 'f' || key === 'F') {
+    globalFlaresEnabled = !globalFlaresEnabled;
+    targets.forEach(t => t.flaresEnabled = globalFlaresEnabled);
+  } else if (key === 'r' || key === 'R') {
+    spawnTargets(NB_TARGETS);
+    flares = [];
+    pursuer.pos.set(width / 2, height / 2);
+    pursuer.vel.set(2, 3);
+  } else if (key === ' ') {
+    isSimulationPaused = !isSimulationPaused;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }

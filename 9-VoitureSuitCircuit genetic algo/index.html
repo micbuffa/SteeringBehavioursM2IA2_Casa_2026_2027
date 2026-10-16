@@ -1,20 +1,148 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Projet 9 — Course Autonome par Algorithme Génétique & Réseau de Neurones</title>
+    <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.1.0/dist/tf.min.js"></script>
-    <title>Voiture</title>
   </head>
   <body>
-    <script src="nn.js"></script>
-    <script src="ga.js"></script>
-    <script src="ray.js"></script>
+    <header>
+      <div class="title-area">
+        <h1>
+          🏎️ Conduite Autonome par Réseau de Neurones
+          <span class="badge">Reynolds Steering</span>
+        </h1>
+        <p>Topologie adaptative en fonction des rayons capteurs & évolution génétique</p>
+      </div>
+      <div class="topology-banner" id="topologyBadge">
+        Calcul de la topologie en cours...
+      </div>
+    </header>
+
+    <div class="dashboard-container">
+      <!-- Panneau latéral de contrôle -->
+      <aside class="controls-sidebar">
+        <!-- Carte 1 : Topologie et Cerveau IA -->
+        <div class="card">
+          <div class="card-title">🧠 Cerveau IA & Topologie</div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Architecture des Couches Cachées</span>
+            </div>
+            <select id="topologySelect">
+              <option value="1-layer-2x">1 couche cachée (2 × Rayons)</option>
+              <option value="2-layers-2x-1x" selected>2 couches cachées (2N → 1N) [Recommandé]</option>
+              <option value="2-layers-3x-1.5x">2 couches profondes (3N → 1.5N)</option>
+              <option value="3-layers-pyramid">3 couches pyramidales (2N → 1.5N → 1N)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Nombre de Rayons Capteurs (Entrées)</span>
+              <span class="val" id="raysVal">7</span>
+            </div>
+            <input type="range" id="raysSlider" min="3" max="15" step="1" value="7" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Portée des Capteurs (Sight)</span>
+              <span class="val" id="sightVal">90 px</span>
+            </div>
+            <input type="range" id="sightSlider" min="40" max="180" step="5" value="90" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Angle de Vision (FOV)</span>
+              <span class="val" id="fovVal">120°</span>
+            </div>
+            <input type="range" id="fovSlider" min="60" max="180" step="10" value="120" />
+          </div>
+        </div>
+
+        <!-- Carte 2 : Locomotion & Vitesse -->
+        <div class="card">
+          <div class="card-title">⚡ Locomotion & Vitesse</div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Vitesse Max des Véhicules</span>
+              <span class="val" id="maxSpeedVal">6.0 px/f</span>
+            </div>
+            <input type="range" id="maxSpeedSlider" min="2" max="15" step="0.5" value="6.0" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Maniabilité / Force Max (Steering)</span>
+              <span class="val" id="maxForceVal">0.25</span>
+            </div>
+            <input type="range" id="maxForceSlider" min="0.05" max="0.60" step="0.05" value="0.25" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Vitesse Simulation (Cycles/frame)</span>
+              <span class="val" id="simSpeedVal">1x</span>
+            </div>
+            <input type="range" id="simSpeedSlider" min="1" max="20" step="1" value="1" />
+          </div>
+        </div>
+
+        <!-- Carte 3 : Algorithme Génétique -->
+        <div class="card">
+          <div class="card-title">🧬 Algorithme Génétique</div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Taux de Mutation ADN</span>
+              <span class="val" id="mutationVal">10%</span>
+            </div>
+            <input type="range" id="mutationSlider" min="1" max="35" step="1" value="10" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span>Endurance sans Checkpoint (Lifespan)</span>
+              <span class="val" id="lifespanVal">35 f</span>
+            </div>
+            <input type="range" id="lifespanSlider" min="15" max="80" step="5" value="35" />
+          </div>
+
+          <label class="checkbox-group">
+            <input type="checkbox" id="showSensorsToggle" />
+            <span>Afficher les rayons de toute la flotte</span>
+          </label>
+
+          <div class="button-row">
+            <button class="btn-primary" id="newTrackBtn">🔄 Nouveau Circuit</button>
+            <button class="btn-secondary" id="nextGenBtn">⏭️ Génération +1</button>
+            <button class="btn-danger btn-full" id="resetBtn">⚠️ Réinitialiser Tout</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Zone Canvas p5.js -->
+      <main class="canvas-wrapper">
+        <div id="canvas-container"></div>
+      </main>
+    </div>
+
+    <!-- Scripts de l'application -->
     <script src="boundary.js"></script>
+    <script src="ray.js"></script>
+    <script src="nn.js"></script>
     <script src="vehicle.js"></script>
+    <script src="circuitVehicle.js"></script>
+    <script src="ga.js"></script>
     <script src="sketch.js"></script>
   </body>
 </html>

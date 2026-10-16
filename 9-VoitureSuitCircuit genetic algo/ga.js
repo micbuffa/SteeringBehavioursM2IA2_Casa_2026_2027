@@ -1,67 +1,95 @@
 
-// Fonctions pour le calcul génétique
-// On va créer une nouvelle génération de voitures
+// Algorithme génétique pour l'évolution de la flotte de véhicules autonomes
+
+// Passe à la génération suivante
 function nextGeneration() {
-    console.log('next generation');
-    
-    // On calcule la fitness de chaque voiture: on regarde
-    // combien de checkpoints elle a passé
-    calculateFitnessForAllCars();
+  calculateFitnessForAllCars();
 
-    for (let i = 0; i < TOTAL; i++) {
-      // Pour la mutation, on choisit un parent au hasard
-      // population est le tableau des voitures "vivantes", on
-      // le remplit avec des voitures issues de la génération précédente
-      // et choisies parmis les meilleurs, avec de l'aléatoire et 
-      // des mutations possibles (c'est fait dans pickOne())
-      population[i] = pickOne();
+  // Identifier le champion absolu de la génération précédente (élitisme)
+  let bestParent = savedVehicles[0];
+  for (let v of savedVehicles) {
+    if (v.fitness > (bestParent ? bestParent.fitness : 0)) {
+      bestParent = v;
     }
-
-    // On vide le tableau des voitures mortes
-    for (let i = 0; i < TOTAL; i++) {
-      savedVehicles[i].dispose();
-    }
-    savedVehicles = [];
   }
-  
-  // On choisit un parent au hasard
-  function pickOne() {
-    let index = 0;
 
-    // Algorithme de la roulette
-    // On tire au hasard une voiture parmis les meilleures,
-    // mais avec une probabilité proportionnelle à la fitness
-    // la voiture qui est allée le plus loin a plus de chances
-    // d'être choisie que les autres
-    // On parcourt le tableau des voitures en enlevant
-    // la fitness à r et on s'arrête dès que r <= 0;
-    // la valeur de index est le véhicule choisi
-    let r = random(1);
-    while (r > 0) {
-      r = r - savedVehicles[index].fitness;
-      index++;
-    }
-    index--;
+  // Nouvelle population
+  population = [];
 
-    // l'heureux élu !
-    let vehicle = savedVehicles[index];
-    // on en fait une copie et on la mute
-    let child = new Vehicle(vehicle.brain);
-    child.mutate();
-    return child;
+  // Élitisme : On conserve un clone intact du meilleur champion sans mutation
+  if (bestParent && bestParent.brain) {
+    let eliteChild = new CircuitVehicle(bestParent.brain);
+    eliteChild.isElite = true;
+    population.push(eliteChild);
   }
-  
-  // On calcule la fitness de chaque voiture
-  function calculateFitnessForAllCars() {
-    for (let vehicle of savedVehicles) {
-      vehicle.calculateFitness();
+
+  // Remplissage du reste de la population avec roulette et mutations
+  const targetTotal = (typeof TOTAL !== 'undefined') ? TOTAL : 100;
+  while (population.length < targetTotal) {
+    population.push(pickOne());
+  }
+
+  // Libération mémoire TensorFlow des anciens véhicules
+  for (let vehicle of savedVehicles) {
+    if (vehicle.dispose) {
+      vehicle.dispose();
     }
-    // Normalize all values
-    let sum = 0;
-    for (let vehicle of savedVehicles) {
-      sum += vehicle.fitness;
-    }
+  }
+  savedVehicles = [];
+}
+
+// Sélection par roulette proportionnelle à la fitness
+function pickOne() {
+  if (savedVehicles.length === 0) {
+    return new CircuitVehicle();
+  }
+
+  let index = 0;
+  let r = random(1);
+  while (r > 0 && index < savedVehicles.length) {
+    r = r - savedVehicles[index].fitness;
+    index++;
+  }
+  index--;
+  if (index < 0) index = 0;
+  if (index >= savedVehicles.length) index = savedVehicles.length - 1;
+
+  const parent = savedVehicles[index];
+  const child = new CircuitVehicle(parent.brain);
+
+  // Application du taux de mutation dynamique
+  const mutRate = (typeof getActiveMutationRate === 'function') 
+    ? getActiveMutationRate() 
+    : (typeof MUTATION_RATE !== 'undefined' ? MUTATION_RATE : 0.1);
+
+  child.brain.mutate(mutRate);
+  return child;
+}
+
+// Calcul et normalisation de la fitness pour tous les véhicules morts
+function calculateFitnessForAllCars() {
+  if (savedVehicles.length === 0) return;
+
+  // Calcul brut de la fitness (pondération exponentielle du nombre de checkpoints)
+  for (let vehicle of savedVehicles) {
+    vehicle.calculateFitness();
+  }
+
+  // Normalisation des fitness pour la roulette
+  let sum = 0;
+  for (let vehicle of savedVehicles) {
+    sum += vehicle.fitness;
+  }
+
+  if (sum > 0) {
     for (let vehicle of savedVehicles) {
       vehicle.fitness = vehicle.fitness / sum;
     }
+  } else {
+    // Si toutes les voitures ont 0 fitness, distribution uniforme
+    const uniform = 1 / savedVehicles.length;
+    for (let vehicle of savedVehicles) {
+      vehicle.fitness = uniform;
+    }
   }
+}

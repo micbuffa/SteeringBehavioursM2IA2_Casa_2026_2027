@@ -8,10 +8,11 @@ S'appuyer sur l'article de Craig W. Reynolds, « Steering Behaviors for Autonomo
 
 ## Modèle de mouvement
 
+- **Règle générale impérative : dans tous nos travaux, tous les objets graphiques sont obligatoirement des `Vehicle` et utilisent les steering behaviors pour se déplacer.**
 - Utiliser `p5.Vector` pour les positions, vitesses, accélérations et forces.
 - Le mouvement d'un véhicule est déterminé par sa vitesse et son accélération; un comportement de pilotage calcule une force, puis la locomotion existante l'applique et met à jour le véhicule.
 - Pour un comportement de direction, construire une vitesse désirée à partir d'une direction et de `maxSpeed`, puis calculer `steering = desiredVelocity - currentVelocity`. Limiter la force résultante à `maxForce`.
-- Ne pas déplacer directement une entité dans un comportement. Ne pas contourner `applyForce` ni dupliquer la mise à jour de la locomotion.
+- Ne pas déplacer directement une entité dans un comportement. Ne pas contourner `applyForce` ni dupliquer la mise à jour de la locomotion. Les cibles mobiles ou fuyantes (ex: `Target`, `TargetFuyante`) sont elles-mêmes des véhicules qui appliquent des forces et laissent `update()` déplacer l'entité.
 - Respecter la séparation conceptuelle décrite par Reynolds : sélection de l'action (objectif), steering (force de pilotage), locomotion (application de la force et déplacement). Garder le périmètre de chaque petit exemple simple et explicite.
 
 ## `vehicle.js` et réutilisation
@@ -23,16 +24,26 @@ S'appuyer sur l'article de Craig W. Reynolds, « Steering Behaviors for Autonomo
 
 ## Entités et organisation des fichiers
 
-- Garder un fichier distinct par entité identifiée dans l'exemple : par exemple `Player.js`, `Enemy.js`, `Target.js` ou `Obstacle.js`. Ne pas regrouper plusieurs classes d'entités dans un même fichier.
-- Toute entité visible doit étendre `Vehicle`, y compris une entité qui paraît statique. Ne créer aucune classe d'objet visible indépendante de `Vehicle`.
+- Garder un fichier distinct par entité identifiée dans l'exemple : par exemple `Player.js`, `Enemy.js`, `Target.js`, `targetFuyante.js` ou `Obstacle.js`. Ne pas regrouper plusieurs classes d'entités dans un même fichier.
+- **Toute entité visible doit étendre `Vehicle`**, y compris une entité qui paraît statique, une cible, un leurre ou un obstacle. Ne créer aucune classe d'objet visible indépendante de `Vehicle`.
 - Garder chaque exemple autonome dans son dossier existant. Placer les nouvelles classes d'entité et les comportements dans des fichiers séparés et nommés clairement; éviter les grandes fonctions qui mélangent perception, décision, calcul des forces, mise à jour et dessin.
 - Les noms de fichiers déjà en minuscules dans un exemple peuvent conserver cette convention; ne pas renommer les fichiers existants sans nécessité.
 
-## Comportements composables
+## Comportements composables, scénarios et cibles fuyantes
 
 - Concevoir chaque comportement comme une unité réutilisable qui retourne une force ou un résultat clairement défini.
 - Composer les comportements au niveau du contrôleur ou de l'entité avec une somme pondérée, un système de priorités, ou une combinaison adaptée à l'exemple. Garder les comportements eux-mêmes indépendants.
 - Exemples de règles : `seek` dirige vers une cible, `flee` s'en éloigne, `arrive` réduit la vitesse désirée près de la cible, `pursue` et `evade` anticipent une position future, `wander` conserve une variation directionnelle continue plutôt qu'un nouveau tirage aléatoire brutal à chaque image.
+- **Menu déroulant multi-scénarios :** Lorsqu'un exemple permet d'explorer plusieurs scénarios ou règles de comportement, intégrer un menu déroulant (`<select>`) dans l'interface afin de basculer de façon interactive et fluide entre les scénarios (ex : Scénario 1 poursuite standard, Scénario 2 cible fuyante).
+- **Cible fuyante (`TargetFuyante`) :**
+  - Implémentée dans son propre fichier `targetFuyante.js`, elle étend `Vehicle` (directement ou via `Target`).
+  - Elle utilise la méthode héritée `flee()` pour fuir le prédateur le plus proche lorsqu'il pénètre dans son cercle de détection (par défaut 200 px, réglable par curseur).
+  - Pendant la fuite, elle accélère (`maxForce` accru) et augmente sa vitesse (`maxSpeed` accru).
+  - Hystérésis de fuite : elle continue de fuir jusqu'à atteindre une distance de sécurité de 300 px du prédateur. Une fois hors de portée, elle reprend son comportement normal de `Target`.
+  - Endurance limitée : elle ne peut fuir au-delà d'une durée maximale (par défaut 2,5 s, réglable par curseur). Une barre d'endurance est obligatoirement dessinée au-dessus de la cible. Si l'endurance est épuisée, la cible cesse de fuir et retourne à son comportement normal jusqu'à récupération.
+- **Mode Debug (Touche 'd') :**
+  - Activable/désactivable avec la touche 'd' (et répercuté par une case à cocher).
+  - En mode debug, le cercle de détection de la cible doit être visible : jaune par défaut, et rouge lorsqu'un vaisseau est détecté à l'intérieur.
 - Pour le flocking, garder séparation, alignement et cohésion distincts avant de les combiner.
 - Limiter la perception au voisinage utile de l'agent et expliquer les paramètres qui influencent le résultat.
 
